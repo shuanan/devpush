@@ -67,22 +67,37 @@ export function evidenceExitProblems(result) {
   return result.problems.filter((problem) => !reportedNotFailing.has(problem))
 }
 
-function planFlag(value) {
-  return value === 'true'
+export function parsePlanFlag(value) {
+  if (value === 'true') return true
+  if (value === 'false') return false
+  return null
+}
+
+export function parsePlanFlags(flags) {
+  const invalid = []
+  const plan = {}
+  for (const key of ['application', 'agent', 'image']) {
+    const parsed = parsePlanFlag(flags?.[key])
+    if (parsed === null) invalid.push(key)
+    else plan[key] = parsed
+  }
+  if (invalid.length) return { ok: false, invalid }
+  return { ok: true, plan }
 }
 
 function main() {
   const checkoutSha = process.env.CI_CHECKOUT_SHA
     ?? execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()
+  const parsed = parsePlanFlags({
+    application: process.env.CI_PLAN_APPLICATION,
+    agent: process.env.CI_PLAN_AGENT,
+    image: process.env.CI_PLAN_IMAGE,
+  })
   const result = evaluateCiEvidence({
     event: process.env.CI_EVENT,
     selectedSha: process.env.CI_SELECTED_SHA,
     checkoutSha,
-    plan: {
-      application: planFlag(process.env.CI_PLAN_APPLICATION),
-      agent: planFlag(process.env.CI_PLAN_AGENT),
-      image: planFlag(process.env.CI_PLAN_IMAGE),
-    },
+    plan: parsed.ok ? parsed.plan : { application: true, agent: true, image: true },
     jobResults: {
       validate: process.env.CI_RESULT_VALIDATE,
       unit: process.env.CI_RESULT_UNIT,
@@ -94,6 +109,9 @@ function main() {
       'production-image': process.env.CI_RESULT_PRODUCTION_IMAGE,
     },
   })
+  if (!parsed.ok) {
+    for (const key of parsed.invalid) result.problems.push(`plan_flag_invalid_${key}`)
+  }
   writeFileSync('ci-sha-evidence.json', `${JSON.stringify(result, null, 2)}\n`)
   if (result.problems.length) console.error(result.problems.join('\n'))
   const exitProblems = evidenceExitProblems(result)

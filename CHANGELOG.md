@@ -9,6 +9,7 @@
 - A manual CI dispatch with no comparison base still runs the application test jobs. Pull request and push plans are unchanged.
 - Each deploy-admission denial is a new frozen object, so changing one result cannot make a later call admit.
 - A CI job report no longer treats a pull request, a push to main, or an unverified dispatch as fast-forward land evidence. The check-run helper compares the supplied row SHA and repository and does not call GitHub.
+- Missing or invalid CI plan flags fail the evidence command instead of being read as a documentation-only plan.
 
 ## [1.1.0] - 2026-11-02
 
