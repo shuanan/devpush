@@ -28,6 +28,7 @@
       "items": [
         "cloudflare-deployment",
         "production-operations",
+        "external-deploy-admission",
         "agent-maintenance",
         "deletion-recovery"
       ]

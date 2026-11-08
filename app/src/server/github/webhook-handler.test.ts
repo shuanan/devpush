@@ -122,3 +122,21 @@ test('a push refreshes each affected project once', async () => {
   )
   expect(mocks.notifyProject.mock.calls).toEqual([['one'], ['two']])
 })
+
+test('a push-only delivery still queues a deployment without CI, review, or hold facts', async () => {
+  const response = await handleGitHubWebhook(
+    delivery({
+      ref: 'refs/heads/main',
+      installation: { id: 1 },
+      repository: { id: 2, full_name: 'acme/app' },
+      head_commit: { id: 'abc123' },
+    }),
+  )
+  expect(response.status).toBe(200)
+  expect(mocks.deploy).toHaveBeenCalledOnce()
+  const argument = mocks.deploy.mock.calls[0]?.[0] as Record<string, unknown>
+  expect(argument).not.toHaveProperty('ciConclusion')
+  expect(argument).not.toHaveProperty('reviewSha')
+  expect(argument).not.toHaveProperty('hold')
+  expect(argument).not.toHaveProperty('pauseLatchSet')
+})

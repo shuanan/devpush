@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Document a candidate external deploy-admission policy and its unit tests. Push, dashboard, API, and rollback paths do not call it, so current deploy behavior is unchanged.
+
 ## [1.1.0] - 2026-11-02
 
 ### Added

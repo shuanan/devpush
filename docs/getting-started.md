@@ -26,7 +26,7 @@ devpush suggests a route when the Compose file has an unambiguous HTTP target. C
 
 Open **Deployments → Deploy**, select the environment, branch and commit, then follow its logs. When it succeeds, choose **Visit**.
 
-A push to the environment's branch deploys again automatically. GitHub webhooks require a publicly reachable dashboard; localhost supports manual deployments only.
+A push to the environment's branch deploys again automatically. That push does not check CI status, a pull-request review, or a hold. See [External deploy admission](/docs/external-deploy-admission/). GitHub webhooks require a publicly reachable dashboard; localhost supports manual deployments only.
 
 ## Troubleshooting
 
