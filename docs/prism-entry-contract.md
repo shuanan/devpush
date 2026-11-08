@@ -10,17 +10,19 @@ The source of the land rules is [prism-infra `862e7e5`](https://github.com/shuan
 
 The caller argument is not a machine-verified fresh review. Nothing in `land.sh` reads a review record. Saying that a person typed the SHA does not make the review machine-verified.
 
-## CI evidence
+## Actions job report
 
-[`.github/workflows/ci.yml`](https://github.com/shuanan/devpush/blob/main/.github/workflows/ci.yml) runs `pull_request` without a branch filter, and `push` only for `main`. Checkout does not set `ref`. On `pull_request`, GitHub's `GITHUB_SHA` is the merge commit, not the head ([events that trigger workflows](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request)).
+[`.github/workflows/ci.yml`](https://github.com/shuanan/devpush/blob/main/.github/workflows/ci.yml) runs `pull_request` without a branch filter, and `push` only for `main`. Checkout does not set `ref`. On `pull_request`, GitHub's `GITHUB_SHA` is the merge commit, not the head ([pull_request](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request)). A green pull request check means those jobs finished. It is not fast-forward land evidence. `scripts/ci-evidence.mjs` records that as `pull_request_is_not_land_evidence` and sets `usable_for_land`, `fresh_review`, and `deploy` to false. The job still exits 0 when the only problems are that classification, so the pull request is not forced red. Required jobs that are not `success` still make the process exit 1. The refusal stays in `problems`; it is not deleted to manufacture a clean exit.
 
-`scripts/release-ci.mjs` already refuses to reuse a `pull_request` run. It accepts `push` and `workflow_dispatch` only when `head_sha` is the selected commit. This proposal keeps that split. A green pull request check is not land evidence, even if its checkout tree happens to match the head. The merge ref is useful as a test of the combined tree; it is not the commit `land.sh` fast-forwards.
+A `push` to `main` runs after that commit is already on `main`. The report marks `push_is_post_land`. It cannot be reused as the pre-land check for the same landing.
 
-`scripts/ci-evidence.mjs` records `selected_sha`, `checkout_sha`, and `usable_for_land`. `fresh_review` is always false. `usable_for_land` requires a `push` or `workflow_dispatch` event, equal SHAs, and `success` for every job [`scripts/ci-plan.mjs`](https://github.com/shuanan/devpush/blob/main/scripts/ci-plan.mjs) selected. A skipped required job fails that record. Other checks may be `skipped` or `neutral`; the named required job must be `success`. An empty check list is not green. That matches `ci_refusal` in [prism-infra `prism_autodeploy.py`](https://github.com/shuanan/prism-infra/blob/862e7e5e63b41debd8aebdff4f8c39cecce53254/scripts/prism_autodeploy.py) lines 257–268, which also refuses zero runs and requires one named successful run.
+`workflow_dispatch` can be triggered only when the workflow file exists on the default branch. `GITHUB_SHA` is the tip of the ref that received the dispatch, and that ref need not be the default branch ([workflow_dispatch](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_dispatch)). The event has no `pull_request.base.sha` and no `before`. The plan then selects the application, agent, and image jobs. This script does not ask GitHub whether the process environment is that run, so `usable_for_land` stays false with `provenance_unverified`. Merging first in order to obtain a `push` run is not a pre-land check.
 
-The evidence file is an artifact of a future Actions run. It is not a deploy ticket. No run exists for this proposal until Actions produces one. Local tests of the script are not GitHub CI.
+## Check-run rows
 
-`workflow_dispatch` uses the workflow file on the default branch ([workflow_dispatch](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_dispatch)). Its payload has no `pull_request.base.sha` and no `before`. The plan then selects the application, agent, and image jobs, so validate, unit, integration, package-consumer, and worker are not skipped for lack of a diff base. A `pull_request` run uses the workflow from the merge of the pull request, and its result still has `usable_for_land` false.
+`ciOnExactSha` in `scripts/prism-entry-contract.mjs` is a different check. It does not call GitHub. It refuses unless the caller passes `workflow_dispatch`, a 40-character `expectedSha`, a repository, and a non-empty row list whose every `sha` and `repository` match. `skipped` does not satisfy the required name. An empty list fails. A matching result means `supplied_rows_match_sha` only. `classifyEntryRequest` still returns `deploy: false` and `fresh_review_verified: false`.
+
+`ci_refusal` in prism-infra `prism_autodeploy.py` is a third check, on that repository's `main` after a deploy decision. It is not this script.
 
 ## Hold, pause, and scope
 

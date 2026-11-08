@@ -8,6 +8,7 @@
 - Record whether a CI run checked out the selected commit and whether every job selected by the change plan succeeded. A pull request run is not land evidence. The Prism entry contract is a proposal and does not deploy.
 - A manual CI dispatch with no comparison base still runs the application test jobs. Pull request and push plans are unchanged.
 - Each deploy-admission denial is a new frozen object, so changing one result cannot make a later call admit.
+- A CI job report no longer treats a pull request, a push to main, or an unverified dispatch as fast-forward land evidence. The check-run helper compares the supplied row SHA and repository and does not call GitHub.
 
 ## [1.1.0] - 2026-11-02
 

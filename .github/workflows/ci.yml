@@ -194,9 +194,6 @@ jobs:
     needs: [changes, validate, documentation, unit, integration, production-image, package-consumer, worker, agent]
     if: always() && needs.changes.result == 'success'
     runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-      actions: write
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -216,10 +213,5 @@ jobs:
           CI_RESULT_DOCUMENTATION: ${{ needs.documentation.result }}
           CI_RESULT_AGENT: ${{ needs.agent.result }}
           CI_RESULT_PRODUCTION_IMAGE: ${{ needs['production-image'].result }}
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: always()
-        with:
-          name: ci-sha-evidence
-          path: ci-sha-evidence.json
-          if-no-files-found: error
-          retention-days: 14
+      - if: always()
+        run: if [ -f ci-sha-evidence.json ]; then cat ci-sha-evidence.json >> "$GITHUB_STEP_SUMMARY"; fi

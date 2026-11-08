@@ -3,6 +3,14 @@ import { writeFileSync } from 'node:fs'
 
 const sha = /^[0-9a-f]{40}$/
 
+// These stay in `problems` and force usable_for_land false.
+// They do not fail the job: a green pull_request check is test status, not land evidence.
+const reportedNotFailing = new Set([
+  'pull_request_is_not_land_evidence',
+  'push_is_post_land',
+  'provenance_unverified',
+])
+
 export function requiredJobNames(plan) {
   const names = plan.application
     ? ['validate', 'unit', 'integration', 'package-consumer', 'worker']
@@ -25,19 +33,28 @@ export function evaluateCiEvidence({
   }
   if (event === 'pull_request') {
     problems.push('pull_request_is_not_land_evidence')
-  } else if (event === 'push' || event === 'workflow_dispatch') {
-    if (sha.test(selectedSha ?? '') && sha.test(checkoutSha ?? '') && selectedSha !== checkoutSha) {
-      problems.push('checkout_sha_mismatch')
-    }
+  } else if (event === 'push') {
+    problems.push('push_is_post_land')
+  } else if (event === 'workflow_dispatch') {
+    problems.push('provenance_unverified')
   } else {
     problems.push('event_not_land_evidence')
+  }
+  if (
+    (event === 'push' || event === 'workflow_dispatch') &&
+    sha.test(selectedSha ?? '') &&
+    sha.test(checkoutSha ?? '') &&
+    selectedSha !== checkoutSha
+  ) {
+    problems.push('checkout_sha_mismatch')
   }
   for (const name of requiredJobNames(plan)) {
     if (jobResults[name] !== 'success') problems.push(`job_${name}_${jobResults[name] || 'missing'}`)
   }
   return {
-    usable_for_land: problems.length === 0,
+    usable_for_land: false,
     fresh_review: false,
+    deploy: false,
     problems,
     event,
     selected_sha: selectedSha ?? null,
@@ -46,8 +63,8 @@ export function evaluateCiEvidence({
   }
 }
 
-export function blockingProblems(result) {
-  return result.problems.filter((problem) => problem !== 'pull_request_is_not_land_evidence')
+export function evidenceExitProblems(result) {
+  return result.problems.filter((problem) => !reportedNotFailing.has(problem))
 }
 
 function planFlag(value) {
@@ -78,11 +95,9 @@ function main() {
     },
   })
   writeFileSync('ci-sha-evidence.json', `${JSON.stringify(result, null, 2)}\n`)
-  const blocking = blockingProblems(result)
-  if (blocking.length) {
-    console.error(blocking.join('\n'))
-    process.exitCode = 1
-  }
+  if (result.problems.length) console.error(result.problems.join('\n'))
+  const exitProblems = evidenceExitProblems(result)
+  if (exitProblems.length) process.exitCode = 1
 }
 
 if (process.argv[1] && process.argv[1].endsWith('ci-evidence.mjs')) main()
