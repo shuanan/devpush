@@ -20,7 +20,7 @@ The caller argument is not a machine-verified fresh review. Nothing in `land.sh`
 
 The evidence file is an artifact of a future Actions run. It is not a deploy ticket. No run exists for this proposal until Actions produces one. Local tests of the script are not GitHub CI.
 
-`workflow_dispatch` uses the workflow file on the default branch ([workflow_dispatch](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_dispatch)). Until this file is on `main`, a manual dispatch uses the workflow already on `main`. A `pull_request` run uses the workflow from the merge of the pull request, so it can contain this job before merge, and its result still has `usable_for_land` false.
+`workflow_dispatch` uses the workflow file on the default branch ([workflow_dispatch](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_dispatch)). Its payload has no `pull_request.base.sha` and no `before`. The plan then selects the application, agent, and image jobs, so validate, unit, integration, package-consumer, and worker are not skipped for lack of a diff base. A `pull_request` run uses the workflow from the merge of the pull request, and its result still has `usable_for_land` false.
 
 ## Hold, pause, and scope
 

@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 
 import { selectCiRun } from './release-ci.mjs'
+import { checksFor } from './ci-plan.mjs'
 import { blockingProblems, evaluateCiEvidence, requiredJobNames } from './ci-evidence.mjs'
 
 const head = 'a'.repeat(40)
@@ -68,6 +69,24 @@ test('workflow_dispatch fails closed when checkout is a different SHA', () => {
     jobResults: success,
   })
   assert.deepEqual(blockingProblems(result), ['checkout_sha_mismatch'])
+})
+
+test('dispatch without a base still fails when a required application job is skipped or missing', () => {
+  const plan = checksFor({ inputs: null }, [])
+  assert.equal(plan.application, true)
+  for (const unit of ['skipped', 'failure', undefined]) {
+    const result = evaluateCiEvidence({
+      event: 'workflow_dispatch',
+      selectedSha: head,
+      checkoutSha: head,
+      plan,
+      jobResults: { ...success, unit },
+    })
+    assert.equal(result.usable_for_land, false)
+    assert.equal(result.fresh_review, false)
+    assert.ok(result.problems.some((problem) => problem.startsWith('job_unit_')))
+  }
+  assert.equal(selectCiRun([{ id: 9, head_sha: merge, event: 'pull_request', conclusion: 'success' }], head), undefined)
 })
 
 test('a required job that is skipped blocks the run', () => {

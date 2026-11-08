@@ -9,11 +9,25 @@ export function planChecks(paths, { packageChanged = false } = {}) {
   const application = paths.some(path => !/^(?:docs\/|[^/]+\.md$|app\/README\.md$)/.test(path));
   return { agent, image, application };
 }
+
+export function eventBase(event) {
+  const base = event?.pull_request?.base?.sha ?? event?.before;
+  if (base && !/^0+$/.test(String(base))) return base;
+  return null;
+}
+
+// workflow_dispatch has no pull_request base and no push `before`.
+// Running every required suite is the safe plan; an empty diff must not skip them.
+export function checksFor(event, paths, options) {
+  if (!eventBase(event)) return { agent: true, image: true, application: true };
+  return planChecks(paths, options);
+}
+
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const event = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
-  const base = event.pull_request?.base.sha ?? event.before;
-  let checks = { agent: true, image: true };
-  if (base && !/^0+$/.test(base)) {
+  const base = eventBase(event);
+  let checks = { agent: true, image: true, application: true };
+  if (base) {
     const paths = execFileSync('git', ['diff', '--name-only', base, 'HEAD'], { encoding: 'utf8' }).trim().split('\n');
     let packageChanged = false;
     if (paths.includes('app/package.json')) {

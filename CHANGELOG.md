@@ -6,6 +6,7 @@
 
 - Add a deny-only deploy-admission stub. It always returns admit false and ignores its argument. Push, dashboard, API, and rollback paths do not call it, so a push still queues the pushed SHA.
 - Record whether a CI run checked out the selected commit and whether every job selected by the change plan succeeded. A pull request run is not land evidence. The Prism entry contract is a proposal and does not deploy.
+- A manual CI dispatch with no comparison base still runs the application test jobs. Pull request and push plans are unchanged.
 
 ## [1.1.0] - 2026-11-02
 
