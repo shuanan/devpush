@@ -1,161 +1,116 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { describe, expect, test } from 'vitest'
 
 import { decideExternalDeployAdmission } from './external-deploy-admission'
-import type { ExternalDeployAdmissionInput } from './external-deploy-admission'
 
-const approvedSha = 'a'.repeat(40)
-const otherSha = 'b'.repeat(40)
+const sha = 'a'.repeat(40)
 
-function approved(
-  overrides: Partial<ExternalDeployAdmissionInput> = {},
-): ExternalDeployAdmissionInput {
-  return {
-    event: 'api',
-    requestedSha: approvedSha,
-    approvedSha,
-    ciConclusion: 'success',
-    reviewSha: approvedSha,
-    hold: false,
-    pauseLatchSet: false,
-    serviceScope: 'named-scope',
-    allowedScopes: ['named-scope'],
-    evidenceSource: 'prism-land-record',
-    ...overrides,
-  }
+const selfFilled = {
+  event: 'api',
+  requestedSha: sha,
+  approvedSha: sha,
+  reviewSha: sha,
+  ciConclusion: 'success',
+  hold: false,
+  pauseLatchSet: false,
+  evidenceSource: 'prism-land-record',
+  serviceScope: 'named-scope',
+  allowedScopes: ['named-scope'],
 }
 
-describe('candidate external deploy admission', () => {
-  test('admits only an exact SHA backed by an external record', () => {
-    const decision = decideExternalDeployAdmission(approved())
-    expect(decision).toEqual({
-      admit: true,
-      reason: null,
-      pauseLatchCleared: false,
-      restoresDatabase: false,
-      restoresVolumes: false,
-    })
+const denied = {
+  admit: false,
+  reason: 'no_verifiable_artifact',
+  pauseLatchCleared: false,
+  restoresDatabase: false,
+  restoresVolumes: false,
+} as const
+
+function expectDenied(input?: unknown) {
+  expect(decideExternalDeployAdmission(input)).toEqual(denied)
+}
+
+describe('deny-only deploy admission stub', () => {
+  test('a self-filled SHA and a fake label cannot admit', () => {
+    expectDenied(selfFilled)
   })
 
-  test('a matching rollback record still does not restore data or clear a latch', () => {
-    expect(
-      decideExternalDeployAdmission(approved({ event: 'rollback' })),
-    ).toEqual({
-      admit: true,
-      reason: null,
-      pauseLatchCleared: false,
-      restoresDatabase: false,
-      restoresVolumes: false,
-    })
+  test('replaying or mutating the same object cannot admit', () => {
+    const input = { ...selfFilled }
+    expectDenied(input)
+    expectDenied(input)
+    input.evidenceSource = 'forged-again'
+    input.requestedSha = 'b'.repeat(40)
+    expectDenied(input)
   })
-
-  test('refuses a push even when every other fact matches', () => {
-    expect(
-      decideExternalDeployAdmission(approved({ event: 'push' })),
-    ).toMatchObject({ admit: false, reason: 'push_only' })
-  })
-
-  test('refuses a dashboard deploy as a second control plane', () => {
-    expect(
-      decideExternalDeployAdmission(approved({ event: 'user' })),
-    ).toMatchObject({ admit: false, reason: 'dashboard_self_deploy' })
-  })
-
-  test.each(['self', 'caller'] as const)(
-    'refuses %s evidence instead of accepting a self-approval',
-    (evidenceSource) => {
-      expect(
-        decideExternalDeployAdmission(approved({ evidenceSource })),
-      ).toMatchObject({ admit: false, reason: 'self_approval' })
-    },
-  )
-
-  test('refuses unbound evidence', () => {
-    expect(
-      decideExternalDeployAdmission(approved({ evidenceSource: 'unbound' })),
-    ).toMatchObject({ admit: false, reason: 'evidence_unbound' })
-  })
-
-  test('refuses a set pause latch and does not clear it', () => {
-    expect(
-      decideExternalDeployAdmission(approved({ pauseLatchSet: true })),
-    ).toMatchObject({
-      admit: false,
-      reason: 'pause_latch',
-      pauseLatchCleared: false,
-    })
-  })
-
-  test('refuses a hold', () => {
-    expect(
-      decideExternalDeployAdmission(approved({ hold: true })),
-    ).toMatchObject({ admit: false, reason: 'hold' })
-  })
-
-  test.each(['failure', 'pending', 'missing', 'cancelled'] as const)(
-    'refuses CI conclusion %s',
-    (ciConclusion) => {
-      expect(
-        decideExternalDeployAdmission(approved({ ciConclusion })),
-      ).toMatchObject({ admit: false, reason: 'ci_not_green' })
-    },
-  )
 
   test.each([
-    { requestedSha: otherSha, approvedSha },
-    { requestedSha: approvedSha, approvedSha: null },
-    {
-      requestedSha: approvedSha.slice(0, 39),
-      approvedSha: approvedSha.slice(0, 39),
-    },
-    {
-      requestedSha: approvedSha.toUpperCase(),
-      approvedSha: approvedSha.toUpperCase(),
-    },
-  ])('refuses a SHA that is not the exact approved SHA (%j)', (sha) => {
-    expect(decideExternalDeployAdmission(approved(sha))).toMatchObject({
-      admit: false,
-      reason: 'sha_mismatch',
-    })
+    undefined,
+    null,
+    {},
+    { event: 'merge' },
+    { event: 'push' },
+    { event: 'user' },
+    { event: 'api' },
+    { event: 'rollback' },
+    { ...selfFilled, event: undefined },
+    { ...selfFilled, event: null },
+    { ...selfFilled, event: '' },
+    { ...selfFilled, hold: undefined },
+    { ...selfFilled, hold: null },
+    { ...selfFilled, hold: 0 },
+    { ...selfFilled, hold: 'unknown' },
+    { ...selfFilled, pauseLatchSet: undefined },
+    { ...selfFilled, pauseLatchSet: null },
+    { ...selfFilled, pauseLatchSet: 0 },
+    { ...selfFilled, pauseLatchSet: 'set' },
+    { ...selfFilled, evidenceSource: undefined },
+    { ...selfFilled, evidenceSource: null },
+    { ...selfFilled, evidenceSource: '' },
+    { ...selfFilled, evidenceSource: 'self' },
+    { ...selfFilled, evidenceSource: 'caller' },
+    { ...selfFilled, ciConclusion: undefined },
+    { ...selfFilled, ciConclusion: null },
+    { ...selfFilled, ciConclusion: 'skipped' },
+    { ...selfFilled, ciConclusion: 'neutral' },
+  ])('denies missing or invalid input %j', (input) => {
+    expectDenied(input)
   })
 
-  test.each([otherSha, null])(
-    'refuses a review that does not match the requested SHA (%s)',
-    (reviewSha) => {
-      expect(
-        decideExternalDeployAdmission(approved({ reviewSha })),
-      ).toMatchObject({ admit: false, reason: 'review_sha_mismatch' })
-    },
-  )
-
-  test('an allowlist entry does not admit any other scope', () => {
-    expect(
-      decideExternalDeployAdmission(approved({ serviceScope: 'other-scope' })),
-    ).toMatchObject({ admit: false, reason: 'scope_not_allowed' })
-  })
-
-  test('an empty allowlist refuses every scope, including one that already has a separate timer', () => {
-    expect(
-      decideExternalDeployAdmission(
-        approved({ serviceScope: 'podcast-capture', allowedScopes: [] }),
+  test('the stub source has no approval return', () => {
+    const source = readFileSync(
+      resolve(
+        dirname(fileURLToPath(import.meta.url)),
+        'external-deploy-admission.ts',
       ),
-    ).toMatchObject({ admit: false, reason: 'scope_not_allowed' })
+      'utf8',
+    )
+    expect(source).not.toMatch(/admit:\s*true/)
   })
 
-  test('request paths do not call the candidate policy', () => {
+  test('production sources do not name the stub; this is a text search, not a call graph', () => {
     const here = dirname(fileURLToPath(import.meta.url))
-    const paths = [
-      resolve(here, '../github/webhook-handler.ts'),
-      resolve(here, './deployments.ts'),
-      resolve(here, '../api/mutation-operations.ts'),
-    ]
-    for (const path of paths) {
-      expect(readFileSync(path, 'utf8')).not.toContain(
+    const roots = [resolve(here, '../..'), resolve(here, '../../../../agent')]
+    const files: string[] = []
+    const walk = (dir: string) => {
+      for (const name of readdirSync(dir)) {
+        if (name === 'node_modules' || name === 'dist') continue
+        const path = resolve(dir, name)
+        if (statSync(path).isDirectory()) walk(path)
+        else if (/\.(ts|tsx|go)$/.test(name)) files.push(path)
+      }
+    }
+    for (const root of roots) walk(root)
+    const mentions = files.filter((path) => {
+      if (path.endsWith('external-deploy-admission.ts')) return false
+      if (path.endsWith('external-deploy-admission.test.ts')) return false
+      return readFileSync(path, 'utf8').includes(
         'decideExternalDeployAdmission',
       )
-    }
+    })
+    expect(mentions).toEqual([])
   })
 })

@@ -28,7 +28,6 @@
       "items": [
         "cloudflare-deployment",
         "production-operations",
-        "external-deploy-admission",
         "agent-maintenance",
         "deletion-recovery"
       ]
@@ -91,7 +90,8 @@
         "local-setup",
         "development",
         "package-installation",
-        "agent-releases"
+        "agent-releases",
+        "external-deploy-admission"
       ]
     }
   ]

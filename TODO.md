@@ -1,6 +1,6 @@
 # TODO
 
-- Bind external deploy admission to a verified external land record before any deployment uses it. The candidate policy is not on the request path.
+- Do not treat the deny-only deploy admission stub as a gate. No machine-verifiable admission artifact exists, and the stub must not gain an admit path until that contract exists outside this repository.
 - Recover open browser tabs when an app update replaces server-function bundles.
 - Load-test concurrent deployments, log ingestion and database recovery on D1/libSQL.
 - Preserve generated deployment URLs across server IP changes.

@@ -15,4 +15,7 @@ func TestAllContainersReadyRejectsUnhealthy(t *testing.T) {
 	if !allContainersReady([]containerStatus{{Name: "web", State: "running", Health: "healthy"}}) {
 		t.Fatal("healthy running container was rejected")
 	}
+	if !allContainersReady([]containerStatus{{Name: "web", State: "running", Health: ""}}) {
+		t.Fatal("empty health is currently treated as ready")
+	}
 }

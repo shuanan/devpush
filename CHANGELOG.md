@@ -4,7 +4,7 @@
 
 ### Added
 
-- Document a candidate external deploy-admission policy and its unit tests. Push, dashboard, API, and rollback paths do not call it, so current deploy behavior is unchanged.
+- Add a deny-only deploy-admission stub. It always returns admit false and ignores its argument. Push, dashboard, API, and rollback paths do not call it, so a push still queues the pushed SHA.
 
 ## [1.1.0] - 2026-11-02
 

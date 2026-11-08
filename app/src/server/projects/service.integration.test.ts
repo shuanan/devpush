@@ -2071,7 +2071,10 @@ describe('project settings integration', () => {
     expect(rows.at(0)?.deployment).toMatchObject({
       serverId,
       runtimeId: 'runtime-production',
+      status: 'queued',
       trigger: 'webhook',
+      gitSha: push.gitSha,
+      gitBranch: 'main',
       repoFullName: 'example/renamed-project',
       commitMeta: {
         message: push.message,

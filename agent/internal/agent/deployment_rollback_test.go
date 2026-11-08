@@ -7,6 +7,9 @@ import (
 	"testing"
 )
 
+// The fixture checks that rollback skips ReleaseCommand. It uses stand-in
+// git and docker commands, not a daemon, and it does not show that a
+// RollbackCommand is skipped.
 func TestRollbackSkipsPreDeployCommand(t *testing.T) {
 	tempDir := workspaceTempDir(t, "agent-rollback-fixture-")
 	binDir := filepath.Join(tempDir, "bin")
