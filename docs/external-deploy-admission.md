@@ -4,7 +4,7 @@ description: Push deploys are unguarded. The deny-only stub cannot approve a SHA
 
 # Deploy admission is unavailable
 
-No machine-verifiable admission artifact exists. `decideExternalDeployAdmission` always returns `admit: false` and `no_verifiable_artifact`. It ignores its argument. A caller can supply a label such as `prism-land-record`, identical SHA strings, a CI conclusion, a hold, or a pause value. Those fields are not read, and none of them approve a deployment. The text `prism-land-record` is not a record.
+No machine-verifiable admission artifact exists. `decideExternalDeployAdmission` returns a new frozen decision with `admit: false` and `no_verifiable_artifact`. Changing that object does not change the next call. It ignores its argument. A caller can supply a label such as `prism-land-record`, identical SHA strings, a CI conclusion, a hold, or a pause value. Those fields are not read, and none of them approve a deployment. The text `prism-land-record` is not a record.
 
 Webhooks, the dashboard, the API, and rollback do not call the stub. No configuration flag enables approval. This page is not a production integration and not a deploy control plane. The separate [Prism entry contract](/docs/prism-entry-contract/) is a proposal for the existing land path; it is not wired either.
 

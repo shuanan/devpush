@@ -38,6 +38,22 @@ describe('deny-only deploy admission stub', () => {
     expectDenied(selfFilled)
   })
 
+  test('mutating a result cannot make this or the next call admit', () => {
+    const first = decideExternalDeployAdmission(selfFilled)
+    expect(Object.isFrozen(first)).toBe(true)
+    expect(() => {
+      ;(first as { admit: boolean }).admit = true
+    }).toThrow(TypeError)
+    expect(first.admit).toBe(false)
+    const second = decideExternalDeployAdmission({
+      ...selfFilled,
+      admit: true,
+      evidenceSource: 'prism-land-record',
+    })
+    expect(second).not.toBe(first)
+    expect(second).toEqual(denied)
+  })
+
   test('replaying or mutating the same object cannot admit', () => {
     const input = { ...selfFilled }
     expectDenied(input)

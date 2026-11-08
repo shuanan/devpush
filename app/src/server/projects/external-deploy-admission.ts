@@ -13,16 +13,18 @@ export type ExternalDeployAdmissionDecision = {
   restoresVolumes: false
 }
 
-const denied: ExternalDeployAdmissionDecision = {
-  admit: false,
-  reason: externalDeployAdmissionReason,
-  pauseLatchCleared: false,
-  restoresDatabase: false,
-  restoresVolumes: false,
+function deniedDecision(): ExternalDeployAdmissionDecision {
+  return Object.freeze({
+    admit: false,
+    reason: externalDeployAdmissionReason,
+    pauseLatchCleared: false,
+    restoresDatabase: false,
+    restoresVolumes: false,
+  })
 }
 
 export function decideExternalDeployAdmission(
   _input?: unknown,
 ): ExternalDeployAdmissionDecision {
-  return denied
+  return deniedDecision()
 }
