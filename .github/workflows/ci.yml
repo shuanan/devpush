@@ -189,3 +189,37 @@ jobs:
       - run: go vet ./agent/...
       - run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
         working-directory: agent
+
+  ci-evidence:
+    needs: [changes, validate, documentation, unit, integration, production-image, package-consumer, worker, agent]
+    if: always() && needs.changes.result == 'success'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+      - run: node scripts/ci-evidence.mjs
+        env:
+          CI_EVENT: ${{ github.event_name }}
+          CI_SELECTED_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          CI_PLAN_APPLICATION: ${{ needs.changes.outputs.application }}
+          CI_PLAN_AGENT: ${{ needs.changes.outputs.agent }}
+          CI_PLAN_IMAGE: ${{ needs.changes.outputs.image }}
+          CI_RESULT_VALIDATE: ${{ needs.validate.result }}
+          CI_RESULT_UNIT: ${{ needs.unit.result }}
+          CI_RESULT_INTEGRATION: ${{ needs.integration.result }}
+          CI_RESULT_PACKAGE_CONSUMER: ${{ needs['package-consumer'].result }}
+          CI_RESULT_WORKER: ${{ needs.worker.result }}
+          CI_RESULT_DOCUMENTATION: ${{ needs.documentation.result }}
+          CI_RESULT_AGENT: ${{ needs.agent.result }}
+          CI_RESULT_PRODUCTION_IMAGE: ${{ needs['production-image'].result }}
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: ci-sha-evidence
+          path: ci-sha-evidence.json
+          if-no-files-found: error
+          retention-days: 14
