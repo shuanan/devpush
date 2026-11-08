@@ -90,7 +90,9 @@
         "local-setup",
         "development",
         "package-installation",
-        "agent-releases"
+        "agent-releases",
+        "external-deploy-admission",
+        "prism-entry-contract"
       ]
     }
   ]

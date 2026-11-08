@@ -1,5 +1,6 @@
 # TODO
 
+- Do not wire the Prism entry contract proposal or the deny-only stub into a deploy path. A caller-supplied reviewed SHA is not a fresh review.
 - Recover open browser tabs when an app update replaces server-function bundles.
 - Load-test concurrent deployments, log ingestion and database recovery on D1/libSQL.
 - Preserve generated deployment URLs across server IP changes.

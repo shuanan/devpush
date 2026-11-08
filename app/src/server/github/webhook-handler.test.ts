@@ -122,3 +122,25 @@ test('a push refreshes each affected project once', async () => {
   )
   expect(mocks.notifyProject.mock.calls).toEqual([['one'], ['two']])
 })
+
+test('a push-only delivery forwards that commit SHA and no approval facts', async () => {
+  const gitSha = 'c'.repeat(40)
+  const response = await handleGitHubWebhook(
+    delivery({
+      ref: 'refs/heads/main',
+      installation: { id: 1 },
+      repository: { id: 2, full_name: 'acme/app' },
+      head_commit: { id: gitSha },
+    }),
+  )
+  expect(response.status).toBe(200)
+  expect(mocks.deploy).toHaveBeenCalledOnce()
+  const argument = mocks.deploy.mock.calls[0]?.[0] as Record<string, unknown>
+  expect(argument.gitSha).toBe(gitSha)
+  expect(argument.branch).toBe('main')
+  expect(argument).not.toHaveProperty('ciConclusion')
+  expect(argument).not.toHaveProperty('reviewSha')
+  expect(argument).not.toHaveProperty('hold')
+  expect(argument).not.toHaveProperty('pauseLatchSet')
+  expect(argument).not.toHaveProperty('evidenceSource')
+})
